@@ -7,8 +7,6 @@ contextBridge.exposeInMainWorld('win', {
   close: () => ipcRenderer.send('window-close'),
   getPos: (): Promise<number[]> => ipcRenderer.invoke('window-get-pos'),
   setPos: (x: number, y: number) => ipcRenderer.send('window-set-pos', x, y),
-  smoothMove: (x: number, y: number) => ipcRenderer.send('window-smooth-move', x, y),
-  smoothMoveCancel: () => ipcRenderer.send('window-smooth-move-cancel'),
   onMoveStart: (cb: () => void) => ipcRenderer.on('window-move-start', cb),
   onMoveStop: (cb: () => void) => ipcRenderer.on('window-move-stop', cb),
 })

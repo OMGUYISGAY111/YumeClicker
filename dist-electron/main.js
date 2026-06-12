@@ -40,8 +40,6 @@ var ipcSign = (win) => {
 		width: MAX_WIDTH,
 		height: MAX_HEIGHT
 	}));
-	let animating = false;
-	let pendingTarget = null;
 	let moveTimer = null;
 	let isMoving = false;
 	win.on("move", () => {
@@ -55,43 +53,6 @@ var ipcSign = (win) => {
 			moveTimer = null;
 			win.webContents.send("window-move-stop");
 		}, 120);
-	});
-	const doSmoothMove = (tx, ty) => {
-		animating = true;
-		const [curX, curY] = win.getPosition();
-		const startTime = Date.now();
-		const duration = 100;
-		const animate = () => {
-			const elapsed = Date.now() - startTime;
-			const progress = Math.min(elapsed / duration, 1);
-			win.setBounds({
-				x: Math.round(curX + (tx - curX) * progress),
-				y: Math.round(curY + (ty - curY) * progress),
-				width: MAX_WIDTH,
-				height: MAX_HEIGHT
-			});
-			if (progress < 1) setTimeout(animate, 33);
-			else {
-				animating = false;
-				if (pendingTarget) {
-					const [px, py] = pendingTarget;
-					pendingTarget = null;
-					doSmoothMove(px, py);
-				}
-			}
-		};
-		animate();
-	};
-	ipcMain.on("window-smooth-move-cancel", () => {
-		animating = false;
-		pendingTarget = null;
-	});
-	ipcMain.on("window-smooth-move", (_, x, y) => {
-		if (animating) {
-			pendingTarget = [x, y];
-			return;
-		}
-		doSmoothMove(x, y);
 	});
 };
 app.whenReady().then(() => {
