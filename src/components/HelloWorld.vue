@@ -7,8 +7,17 @@ import { useAudio } from '../composables/useAudio'
 const count = ref(0)
 const { startTicking, stopTicking } = useAudio()
 
-let moving = false
+let lastDir = ''
+let posX = 0
+let posY = 0
+let moveLoop: ReturnType<typeof setInterval> | null = null
 let moveStopTimer: ReturnType<typeof setTimeout> | null = null
+const heldKeys = new Set<string>()
+
+window.win.getPos().then(([x, y]) => {
+  posX = x
+  posY = y
+})
 
 function onMove() {
   if (moveStopTimer) clearTimeout(moveStopTimer)
@@ -16,36 +25,69 @@ function onMove() {
   moveStopTimer = setTimeout(stopTicking, 200)
 }
 
+function doMove() {
+  onMove()
+  window.win.smoothMove(posX, posY)
+}
+
+function tryMove() {
+  const step = 32
+  switch (lastDir) {
+    case 'w': posY = Math.max(0, posY - step); break
+    case 's': posY += step; break
+    case 'a': posX = Math.max(0, posX - step); break
+    case 'd': posX += step; break
+  }
+  doMove()
+}
+
+function stopLoop() {
+  if (moveLoop) {
+    clearInterval(moveLoop)
+    moveLoop = null
+  }
+}
+
+function startLoop() {
+  if (moveLoop) return
+  tryMove()
+  moveLoop = setInterval(tryMove, 120)
+}
+
 document.addEventListener('keydown', async (e) => {
-  if (moving) return
-  moving = true
-  setTimeout(() => { moving = false }, 120)
-
-  const moveDis = 32
-  const [x, y] = await window.win.getPos()
-
-  if (e.key === 'w' || e.key === 'W') {
-    const newY = Math.max(0, y - moveDis)
-    if (newY === y) { moving = false; return }
-    onMove()
-    window.win.smoothMove(x, newY)
-  } else if (e.key === 's' || e.key === 'S') {
-    onMove()
-    window.win.smoothMove(x, y + moveDis)
-  } else if (e.key === 'a' || e.key === 'A') {
-    const newX = Math.max(0, x - moveDis)
-    if (newX === x) { moving = false; return }
-    onMove()
-    window.win.smoothMove(newX, y)
-  } else if (e.key === 'd' || e.key === 'D') {
-    onMove()
-    window.win.smoothMove(x + moveDis, y)
-  } else if (e.key === "Escape") {
-    window.win.close();
+  if (e.key === "Escape") {
+    window.win.close()
     return
-  } else {
-    moving = false
-    return
+  }
+
+  const dir = e.key.toLowerCase()
+  if (!['w', 's', 'a', 'd'].includes(dir)) return
+
+  heldKeys.add(dir)
+
+  if (dir !== lastDir) {
+    window.win.smoothMoveCancel()
+    stopLoop()
+    lastDir = dir
+    const [x, y] = await window.win.getPos()
+    posX = x
+    posY = y
+    startLoop()
+  }
+})
+
+document.addEventListener('keyup', (e) => {
+  const dir = e.key.toLowerCase()
+  heldKeys.delete(dir)
+  if (dir === lastDir) {
+    stopLoop()
+    if (heldKeys.size > 0) {
+      const [nextDir] = heldKeys
+      lastDir = nextDir
+      startLoop()
+    } else {
+      lastDir = ''
+    }
   }
 })
 
@@ -61,6 +103,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopLoop()
   if (moveStopTimer) clearTimeout(moveStopTimer)
 })
 </script>

@@ -80,6 +80,10 @@ var ipcSign = (win) => {
 		};
 		animate();
 	};
+	ipcMain.on("window-smooth-move-cancel", () => {
+		animating = false;
+		pendingTarget = null;
+	});
 	ipcMain.on("window-smooth-move", (_, x, y) => {
 		if (animating) {
 			pendingTarget = [x, y];

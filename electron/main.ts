@@ -96,6 +96,11 @@ const ipcSign = (win: BrowserWindow) => {
     animate()
   }
 
+  ipcMain.on('window-smooth-move-cancel', () => {
+    animating = false
+    pendingTarget = null
+  })
+
   ipcMain.on('window-smooth-move', (_, x: number, y: number) => {
     if (animating) {
       pendingTarget = [x, y]

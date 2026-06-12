@@ -8,6 +8,7 @@ electron.contextBridge.exposeInMainWorld("win", {
 	getPos: () => electron.ipcRenderer.invoke("window-get-pos"),
 	setPos: (x, y) => electron.ipcRenderer.send("window-set-pos", x, y),
 	smoothMove: (x, y) => electron.ipcRenderer.send("window-smooth-move", x, y),
+	smoothMoveCancel: () => electron.ipcRenderer.send("window-smooth-move-cancel"),
 	onMoveStart: (cb) => electron.ipcRenderer.on("window-move-start", cb),
 	onMoveStop: (cb) => electron.ipcRenderer.on("window-move-stop", cb)
 });
