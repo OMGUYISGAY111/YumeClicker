@@ -1,0 +1,33 @@
+html, body {
+  background: transparent;
+  -webkit-app-region: drag;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+button, input {
+  -webkit-app-region: no-drag;
+}
+
+img {
+  max-width: 100%;
+  max-height: 100%;
+  margin-top: 10px;
+} 
+
+
+
+.close-button {
+  opacity: 0;
+  padding-top: 5px;
+  transition: 
+    opacity 0.2s ease-in, 
+    background-color 0.2s ease-in;
+  border: none;
+}
+
+.close-button:hover {
+  opacity: 100%;
+  background-color: red;
+}
