@@ -6,6 +6,8 @@ export interface WinAPI {
   getPos: () => Promise<number[]>
   setPos: (x: number, y: number) => void
   smoothMove: (x: number, y: number) => void
+  onMoveStart: (cb: () => void) => void
+  onMoveStop: (cb: () => void) => void
 }
 
 declare global {

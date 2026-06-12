@@ -22,6 +22,8 @@ var createWindow = () => {
 			preload: join(__dirname, "preload.js")
 		}
 	});
+	win.setIgnoreMouseEvents(true, { forward: true });
+	win.setAlwaysOnTop(true, "screen-saver");
 	if (process.env.NODE_ENV === "development") win.loadURL("http://localhost:5173");
 	else win.loadFile("dist/index.html");
 	ipcSign(win);
@@ -37,6 +39,20 @@ var ipcSign = (win) => {
 		y
 	}));
 	let animating = false;
+	let moveTimer = null;
+	let isMoving = false;
+	win.on("move", () => {
+		if (!isMoving) {
+			isMoving = true;
+			win.webContents.send("window-move-start");
+		}
+		if (moveTimer) clearTimeout(moveTimer);
+		moveTimer = setTimeout(() => {
+			isMoving = false;
+			moveTimer = null;
+			win.webContents.send("window-move-stop");
+		}, 120);
+	});
 	ipcMain.on("window-smooth-move", (_, x, y) => {
 		if (animating) return;
 		animating = true;

@@ -27,6 +27,9 @@ const createWindow = () => {
     },
   })
 
+  win.setIgnoreMouseEvents(true, { forward: true })
+  win.setAlwaysOnTop(true, 'screen-saver')
+
   if (process.env.NODE_ENV === 'development') {
     win.loadURL('http://localhost:5173')
     if(DEBUG) win.webContents.openDevTools();
@@ -45,6 +48,21 @@ const ipcSign = (win: BrowserWindow) => {
   ipcMain.handle('window-get-pos', () => win.getPosition())
   ipcMain.on('window-set-pos', (_, x: number, y: number) => win.setBounds({ x, y }))
   let animating = false
+  let moveTimer: ReturnType<typeof setTimeout> | null = null
+  let isMoving = false
+
+  win.on('move', () => {
+    if (!isMoving) {
+      isMoving = true
+      win.webContents.send('window-move-start')
+    }
+    if (moveTimer) clearTimeout(moveTimer)
+    moveTimer = setTimeout(() => {
+      isMoving = false
+      moveTimer = null
+      win.webContents.send('window-move-stop')
+    }, 120)
+  })
 
   ipcMain.on('window-smooth-move', (_, x: number, y: number) => {
     if (animating) return
@@ -63,6 +81,7 @@ const ipcSign = (win: BrowserWindow) => {
         width: MAX_WIDTH,
         height: MAX_HEIGHT,
       })
+
       if (progress < 1) {
         setTimeout(animate, 33)
       } else {

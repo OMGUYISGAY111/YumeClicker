@@ -1,39 +1,45 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import viteLogo from '../assets/vite.svg'
+import { onMounted, onUnmounted, ref } from 'vue'
 import heroImg from '../assets/hero.png'
-import vueLogo from '../assets/vue.svg'
-import { ClosedCaption, ClosedCaptionIcon, Cross, SidebarClose, X } from '@lucide/vue'
+import { X } from '@lucide/vue'
+import { useAudio } from '../composables/useAudio'
 
 const count = ref(0)
+const { startTicking, stopTicking } = useAudio()
 
-let winX = 0
-let winY = 0
 let moving = false
+let moveStopTimer: ReturnType<typeof setTimeout> | null = null
 
-window.win.getPos().then(([x, y]) => {
-  winX = x
-  winY = y
-})
+function onMove() {
+  if (moveStopTimer) clearTimeout(moveStopTimer)
+  startTicking()
+  moveStopTimer = setTimeout(stopTicking, 200)
+}
 
-document.addEventListener('keydown', (e) => {
-
-  console.log(e.key)
-
+document.addEventListener('keydown', async (e) => {
   if (moving) return
   moving = true
   setTimeout(() => { moving = false }, 100)
 
-  const moveDis = 16
+  const moveDis = 32
+  const [x, y] = await window.win.getPos()
 
   if (e.key === 'w' || e.key === 'W') {
-    winY = Math.max(0, winY - moveDis)
+    const newY = Math.max(0, y - moveDis)
+    if (newY === y) { moving = false; return }
+    onMove()
+    window.win.smoothMove(x, newY)
   } else if (e.key === 's' || e.key === 'S') {
-    winY += moveDis
+    onMove()
+    window.win.smoothMove(x, y + moveDis)
   } else if (e.key === 'a' || e.key === 'A') {
-    winX = Math.max(0, winX - moveDis)
+    const newX = Math.max(0, x - moveDis)
+    if (newX === x) { moving = false; return }
+    onMove()
+    window.win.smoothMove(newX, y)
   } else if (e.key === 'd' || e.key === 'D') {
-    winX += moveDis
+    onMove()
+    window.win.smoothMove(x + moveDis, y)
   } else if (e.key === "Escape") {
     window.win.close();
     return
@@ -41,13 +47,22 @@ document.addEventListener('keydown', (e) => {
     moving = false
     return
   }
-  window.win.smoothMove(winX, winY)
 })
 
 function closeWindow() {
   window.win.close();
 }
 
+onMounted(() => {
+  window.win.onMoveStart(() => onMove())
+  window.win.onMoveStop(() => {
+    if (!moveStopTimer) stopTicking()
+  })
+})
+
+onUnmounted(() => {
+  if (moveStopTimer) clearTimeout(moveStopTimer)
+})
 </script>
 
 <template>
