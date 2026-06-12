@@ -48,6 +48,7 @@ const ipcSign = (win: BrowserWindow) => {
   ipcMain.handle('window-get-pos', () => win.getPosition())
   ipcMain.on('window-set-pos', (_, x: number, y: number) => win.setBounds({ x, y }))
   let animating = false
+  let pendingTarget: [number, number] | null = null
   let moveTimer: ReturnType<typeof setTimeout> | null = null
   let isMoving = false
 
@@ -64,8 +65,7 @@ const ipcSign = (win: BrowserWindow) => {
     }, 120)
   })
 
-  ipcMain.on('window-smooth-move', (_, x: number, y: number) => {
-    if (animating) return
+  const doSmoothMove = (tx: number, ty: number) => {
     animating = true
 
     const [curX, curY] = win.getPosition()
@@ -76,8 +76,8 @@ const ipcSign = (win: BrowserWindow) => {
       const elapsed = Date.now() - startTime
       const progress = Math.min(elapsed / duration, 1)
       win.setBounds({
-        x: Math.round(curX + (x - curX) * progress),
-        y: Math.round(curY + (y - curY) * progress),
+        x: Math.round(curX + (tx - curX) * progress),
+        y: Math.round(curY + (ty - curY) * progress),
         width: MAX_WIDTH,
         height: MAX_HEIGHT,
       })
@@ -86,9 +86,22 @@ const ipcSign = (win: BrowserWindow) => {
         setTimeout(animate, 33)
       } else {
         animating = false
+        if (pendingTarget) {
+          const [px, py] = pendingTarget
+          pendingTarget = null
+          doSmoothMove(px, py)
+        }
       }
     }
     animate()
+  }
+
+  ipcMain.on('window-smooth-move', (_, x: number, y: number) => {
+    if (animating) {
+      pendingTarget = [x, y]
+      return
+    }
+    doSmoothMove(x, y)
   })
 }
 

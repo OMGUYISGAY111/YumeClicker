@@ -39,6 +39,7 @@ var ipcSign = (win) => {
 		y
 	}));
 	let animating = false;
+	let pendingTarget = null;
 	let moveTimer = null;
 	let isMoving = false;
 	win.on("move", () => {
@@ -53,8 +54,7 @@ var ipcSign = (win) => {
 			win.webContents.send("window-move-stop");
 		}, 120);
 	});
-	ipcMain.on("window-smooth-move", (_, x, y) => {
-		if (animating) return;
+	const doSmoothMove = (tx, ty) => {
 		animating = true;
 		const [curX, curY] = win.getPosition();
 		const startTime = Date.now();
@@ -63,15 +63,29 @@ var ipcSign = (win) => {
 			const elapsed = Date.now() - startTime;
 			const progress = Math.min(elapsed / duration, 1);
 			win.setBounds({
-				x: Math.round(curX + (x - curX) * progress),
-				y: Math.round(curY + (y - curY) * progress),
+				x: Math.round(curX + (tx - curX) * progress),
+				y: Math.round(curY + (ty - curY) * progress),
 				width: MAX_WIDTH,
 				height: MAX_HEIGHT
 			});
 			if (progress < 1) setTimeout(animate, 33);
-			else animating = false;
+			else {
+				animating = false;
+				if (pendingTarget) {
+					const [px, py] = pendingTarget;
+					pendingTarget = null;
+					doSmoothMove(px, py);
+				}
+			}
 		};
 		animate();
+	};
+	ipcMain.on("window-smooth-move", (_, x, y) => {
+		if (animating) {
+			pendingTarget = [x, y];
+			return;
+		}
+		doSmoothMove(x, y);
 	});
 };
 app.whenReady().then(() => {

@@ -19,7 +19,7 @@ function onMove() {
 document.addEventListener('keydown', async (e) => {
   if (moving) return
   moving = true
-  setTimeout(() => { moving = false }, 100)
+  setTimeout(() => { moving = false }, 120)
 
   const moveDis = 32
   const [x, y] = await window.win.getPos()
