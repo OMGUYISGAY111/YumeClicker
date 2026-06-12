@@ -46,7 +46,7 @@ const ipcSign = (win: BrowserWindow) => {
   ipcMain.on('window-maximize', () => win.maximize())
   ipcMain.on('window-close', () => win.close())
   ipcMain.handle('window-get-pos', () => win.getPosition())
-  ipcMain.on('window-set-pos', (_, x: number, y: number) => win.setBounds({ x, y }))
+  ipcMain.on('window-set-pos', (_, x: number, y: number) => win.setBounds({ x, y, width: MAX_WIDTH, height: MAX_HEIGHT }))
   let animating = false
   let pendingTarget: [number, number] | null = null
   let moveTimer: ReturnType<typeof setTimeout> | null = null

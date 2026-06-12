@@ -27,11 +27,11 @@ function onMove() {
 
 function doMove() {
   onMove()
-  window.win.smoothMove(posX, posY)
+  window.win.setPos(posX, posY)
 }
 
 function tryMove() {
-  const step = 32
+  const step = 8
   switch (lastDir) {
     case 'w': posY = Math.max(0, posY - step); break
     case 's': posY += step; break
@@ -51,7 +51,7 @@ function stopLoop() {
 function startLoop() {
   if (moveLoop) return
   tryMove()
-  moveLoop = setInterval(tryMove, 120)
+  moveLoop = setInterval(tryMove, 30)
 }
 
 document.addEventListener('keydown', async (e) => {
@@ -66,7 +66,6 @@ document.addEventListener('keydown', async (e) => {
   heldKeys.add(dir)
 
   if (dir !== lastDir) {
-    window.win.smoothMoveCancel()
     stopLoop()
     lastDir = dir
     const [x, y] = await window.win.getPos()

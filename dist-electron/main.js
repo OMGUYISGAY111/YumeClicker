@@ -36,7 +36,9 @@ var ipcSign = (win) => {
 	ipcMain.handle("window-get-pos", () => win.getPosition());
 	ipcMain.on("window-set-pos", (_, x, y) => win.setBounds({
 		x,
-		y
+		y,
+		width: MAX_WIDTH,
+		height: MAX_HEIGHT
 	}));
 	let animating = false;
 	let pendingTarget = null;
