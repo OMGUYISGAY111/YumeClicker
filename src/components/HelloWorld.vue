@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import heroImg from '../assets/hero.png'
 import { X } from '@lucide/vue'
 import { useAudio } from '../composables/useAudio'
 
 const count = ref(0)
+const spriteClass = ref('yume_idle_left')
 const { startTicking, stopTicking } = useAudio()
 
 let lastDir = ''
@@ -18,6 +18,12 @@ window.win.getPos().then(([x, y]) => {
   posX = x
   posY = y
 })
+
+const dirMap: Record<string, string> = { w: 'up', s: 'down', a: 'left', d: 'right' }
+
+function setSprite(state: 'idle' | 'walk', dir: string) {
+  spriteClass.value = `yume_${state}_${dir}`
+}
 
 function onMove() {
   if (moveStopTimer) clearTimeout(moveStopTimer)
@@ -46,12 +52,14 @@ function stopLoop() {
     clearInterval(moveLoop)
     moveLoop = null
   }
+  setSprite('idle', dirMap[lastDir] ?? 'left')
 }
 
 function startLoop() {
   if (moveLoop) return
   tryMove()
   moveLoop = setInterval(tryMove, 30)
+  setSprite('walk', dirMap[lastDir] ?? 'left')
 }
 
 document.addEventListener('keydown', async (e) => {
@@ -85,7 +93,9 @@ document.addEventListener('keyup', (e) => {
       lastDir = nextDir
       startLoop()
     } else {
+      const prevDir = lastDir
       lastDir = ''
+      setSprite('idle', dirMap[prevDir] ?? 'left')
     }
   }
 })
@@ -110,6 +120,6 @@ onUnmounted(() => {
 <template>
   <div class="UI">
     <button @click="closeWindow" class="close-button"><X></X></button>
-    <img src="../assets/hero.png" alt="what" class="character"></img>
+    <div alt="what" :class="['character', spriteClass]"></div>
   </div>
 </template>

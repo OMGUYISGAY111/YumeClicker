@@ -4,23 +4,46 @@ html, body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+
+  /* sprite var */
+
+  /* idle */
+  --yume-idle-left: url(./assets/sprite/yume_idle_left.png);
+  --yume-idle-right: url(./assets/sprite/yume_idle_right.png);
+  --yume-idle-up: url(./assets/sprite/yume_idle_up.png);
+  --yume-idle-down: url(./assets/sprite/yume_idle_down.png);
+
+
+  /* walk */
+  --yume-walk-left: url(./assets/sprite/yume_walk_left.png);
+  --yume-walk-right: url(./assets/sprite/yume_walk_right.png);
+  --yume-walk-down: url(./assets/sprite/yume_walk_down.png);
+  --yume-walk-up: url(./assets/sprite/yume_walk_up.png);
+
 }
 
 button, input {
   -webkit-app-region: no-drag;
 }
 
-img {
-  max-width: 100%;
-  max-height: 100%;
-  margin-top: 10px;
-} 
+.UI {
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+}
 
-
+.character {
+  height: 100%;
+  width: 100%;
+}
 
 .close-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
   opacity: 0;
-  padding-top: 5px;
+  padding: 2px 4px;
   transition: 
     opacity 0.2s ease-in, 
     background-color 0.2s ease-in;
@@ -30,4 +53,43 @@ img {
 .close-button:hover {
   opacity: 100%;
   background-color: red;
+}
+
+.yume_idle_left {
+  background-image: var(--yume-idle-left);
+  background-size: cover;
+}
+.yume_idle_right {
+  background-image: var(--yume-idle-right);
+  background-size: cover;
+}
+.yume_idle_up {
+  background-image: var(--yume-idle-up);
+  background-size: cover;
+}
+.yume_idle_down {
+  background-image: var(--yume-idle-down);
+  background-size: cover;
+}
+
+.yume_walk_left,
+.yume_walk_right,
+.yume_walk_up,
+.yume_walk_down {
+  background-size: 300% auto;
+  background-position-y: center;
+  background-repeat: no-repeat;
+  animation: walkCycle 0.45s infinite;
+}
+
+.yume_walk_left  { background-image: var(--yume-walk-left); }
+.yume_walk_right { background-image: var(--yume-walk-right); }
+.yume_walk_up    { background-image: var(--yume-walk-up); }
+.yume_walk_down  { background-image: var(--yume-walk-down); }
+
+@keyframes walkCycle {
+  0%   { background-position-x: 0%;   animation-timing-function: step-start; }
+  33%  { background-position-x: 50%;  animation-timing-function: step-start; }
+  66%  { background-position-x: 100%; animation-timing-function: step-start; }
+  100% { background-position-x: 0%; }
 }

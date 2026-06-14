@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 import { BrowserWindow, app, ipcMain } from "electron";
 //#region electron/main.ts
 var __dirname = dirname(fileURLToPath(import.meta.url));
-var MAX_WIDTH = 100;
-var MAX_HEIGHT = 150;
+var MAX_WIDTH = 72;
+var MAX_HEIGHT = 90;
 var createWindow = () => {
 	const win = new BrowserWindow({
 		width: MAX_WIDTH,
@@ -22,7 +22,6 @@ var createWindow = () => {
 			preload: join(__dirname, "preload.js")
 		}
 	});
-	win.setIgnoreMouseEvents(true, { forward: true });
 	win.setAlwaysOnTop(true, "screen-saver");
 	if (process.env.NODE_ENV === "development") win.loadURL("http://localhost:5173");
 	else win.loadFile("dist/index.html");

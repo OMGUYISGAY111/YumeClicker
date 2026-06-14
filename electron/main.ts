@@ -6,8 +6,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const DEBUG = 0;
 
-const MAX_WIDTH = 100;
-const MAX_HEIGHT = 150;
+const MAX_WIDTH = 24 * 3;
+const MAX_HEIGHT = 30 * 3;
 
 const createWindow = () => {
   const win = new BrowserWindow({
@@ -27,7 +27,7 @@ const createWindow = () => {
     },
   })
 
-  win.setIgnoreMouseEvents(true, { forward: true })
+  // win.setIgnoreMouseEvents(true, { forward: true })
   win.setAlwaysOnTop(true, 'screen-saver')
 
   if (process.env.NODE_ENV === 'development') {
