@@ -8,6 +8,7 @@ const spriteClass = ref('yume_idle_left')
 const { startTicking, stopTicking } = useAudio()
 
 let lastDir = ''
+let facing = 'left'
 let posX = 0
 let posY = 0
 let moveLoop: ReturnType<typeof setInterval> | null = null
@@ -52,7 +53,7 @@ function stopLoop() {
     clearInterval(moveLoop)
     moveLoop = null
   }
-  setSprite('idle', dirMap[lastDir] ?? 'left')
+  setSprite('idle', facing)
 }
 
 function startLoop() {
@@ -76,7 +77,7 @@ document.addEventListener('keydown', async (e) => {
     const [wx, wy] = await window.win.getPos()
     const cx = wx + 36
     const cy = wy + 45
-    const facingDir = dirMap[lastDir] ?? 'left'
+    const facingDir = facing
     const offset = 50
     let tx = cx, ty = cy
     switch (facingDir) {
@@ -97,6 +98,7 @@ document.addEventListener('keydown', async (e) => {
   if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(dir)) return
 
   heldKeys.add(dir)
+  facing = dirMap[dir] ?? facing
 
   if (dir !== lastDir) {
     stopLoop()
@@ -116,11 +118,11 @@ document.addEventListener('keyup', (e) => {
     if (heldKeys.size > 0) {
       const [nextDir] = heldKeys
       lastDir = nextDir
+      facing = dirMap[nextDir] ?? facing
       startLoop()
     } else {
-      const prevDir = lastDir
       lastDir = ''
-      setSprite('idle', dirMap[prevDir] ?? 'left')
+      setSprite('idle', facing)
     }
   }
 })
