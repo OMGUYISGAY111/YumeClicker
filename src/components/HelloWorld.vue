@@ -19,7 +19,7 @@ window.win.getPos().then(([x, y]) => {
   posY = y
 })
 
-const dirMap: Record<string, string> = { w: 'up', s: 'down', a: 'left', d: 'right' }
+const dirMap: Record<string, string> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
 
 function setSprite(state: 'idle' | 'walk', dir: string) {
   spriteClass.value = `yume_${state}_${dir}`
@@ -39,10 +39,10 @@ function doMove() {
 function tryMove() {
   const step = 8
   switch (lastDir) {
-    case 'w': posY = Math.max(0, posY - step); break
-    case 's': posY += step; break
-    case 'a': posX = Math.max(0, posX - step); break
-    case 'd': posX += step; break
+    case 'ArrowUp': posY = Math.max(0, posY - step); break
+    case 'ArrowDown': posY += step; break
+    case 'ArrowLeft': posX = Math.max(0, posX - step); break
+    case 'ArrowRight': posX += step; break
   }
   doMove()
 }
@@ -71,9 +71,29 @@ document.addEventListener('keydown', async (e) => {
     return
   }
 
+  //click in front of character
+  if (e.key === 'z' || e.key === 'Z') {
+    const [wx, wy] = await window.win.getPos()
+    const cx = wx + 36
+    const cy = wy + 45
+    const facingDir = dirMap[lastDir] ?? 'left'
+    const offset = 50
+    let tx = cx, ty = cy
+    switch (facingDir) {
+      case 'left': tx = cx - offset; break
+      case 'right': tx = cx + offset; break
+      case 'up': ty = cy - offset; break
+      case 'down': ty = cy + offset; break
+    }
+    const clickX = Math.max(0, Math.round(tx))
+    const clickY = Math.max(0, Math.round(ty))
+    window.win.mouseDblClick(clickX, clickY)
+    return
+  }
+
   //move
-  const dir = e.key.toLowerCase()
-  if (!['w', 's', 'a', 'd'].includes(dir)) return
+  const dir = e.key
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(dir)) return
 
   heldKeys.add(dir)
 
@@ -88,7 +108,7 @@ document.addEventListener('keydown', async (e) => {
 })
 
 document.addEventListener('keyup', (e) => {
-  const dir = e.key.toLowerCase()
+  const dir = e.key
   heldKeys.delete(dir)
   if (dir === lastDir) {
     stopLoop()

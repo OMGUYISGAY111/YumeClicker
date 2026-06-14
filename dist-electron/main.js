@@ -1,6 +1,6 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { BrowserWindow, app, ipcMain } from "electron";
@@ -12,27 +12,49 @@ using System;
 using System.Runtime.InteropServices;
 public static class MouseOps {
     [DllImport("user32.dll")]
+    static extern bool SetCursorPos(int X, int Y);
+
+    [DllImport("user32.dll")]
     static extern void mouse_event(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
+
+    [DllImport("user32.dll")]
+    static extern bool SetForegroundWindow(IntPtr hWnd);
 
     const int MOUSEEVENTF_LEFTDOWN = 0x0002;
     const int MOUSEEVENTF_LEFTUP   = 0x0004;
     const int MOUSEEVENTF_RIGHTDOWN = 0x0008;
     const int MOUSEEVENTF_RIGHTUP  = 0x0010;
 
+    static void DoClick(int dwDown, int dwUp, int x, int y) {
+        SetCursorPos(x, y);
+        System.Threading.Thread.Sleep(10);
+        mouse_event(dwDown, 0, 0, 0, 0);
+        mouse_event(dwUp,   0, 0, 0, 0);
+    }
+
     public static void LeftClick(int x, int y) {
-        mouse_event(MOUSEEVENTF_LEFTDOWN, x, y, 0, 0);
-        mouse_event(MOUSEEVENTF_LEFTUP,   x, y, 0, 0);
+        DoClick(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y);
+    }
+
+    public static void LeftDblClick(int x, int y, IntPtr hWnd) {
+        DoClick(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y);
+        System.Threading.Thread.Sleep(50);
+        DoClick(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y);
+        System.Threading.Thread.Sleep(10);
+        SetForegroundWindow(hWnd);
     }
 
     public static void RightClick(int x, int y) {
-        mouse_event(MOUSEEVENTF_RIGHTDOWN, x, y, 0, 0);
-        mouse_event(MOUSEEVENTF_RIGHTUP,   x, y, 0, 0);
+        DoClick(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y);
     }
 }
 "@
 
 function Click-Left([int]$x, [int]$y) {
     [MouseOps]::LeftClick($x, $y)
+}
+function Click-DblLeft([int]$x, [int]$y, [IntPtr]$hwnd) {
+    [MouseOps]::LeftDblClick($x, $y, $hwnd)
 }
 function Click-Right([int]$x, [int]$y) {
     [MouseOps]::RightClick($x, $y)
@@ -41,14 +63,25 @@ function Click-Right([int]$x, [int]$y) {
 var CLICK_SCRIPT_DIR = join(tmpdir(), "yumeClicker");
 var CLICK_SCRIPT_PATH = join(CLICK_SCRIPT_DIR, "click.ps1");
 function ensureClickScript() {
+	if (existsSync(CLICK_SCRIPT_PATH)) rmSync(CLICK_SCRIPT_PATH);
 	mkdirSync(CLICK_SCRIPT_DIR, { recursive: true });
 	writeFileSync(CLICK_SCRIPT_PATH, CLICK_SCRIPT, "utf-8");
 }
+function runPs(cmd) {
+	try {
+		execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, {
+			timeout: 5e3,
+			windowsHide: true
+		});
+	} catch (err) {
+		console.error("powershell failed:", err.message);
+	}
+}
 function mouseClick(x, y, button = "left") {
-	execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${CLICK_SCRIPT_PATH}" ${button === "left" ? "Click-Left" : "Click-Right"} ${x} ${y}`, {
-		timeout: 3e3,
-		windowsHide: true
-	});
+	runPs(`. '${CLICK_SCRIPT_PATH}'; ${button === "left" ? "Click-Left" : "Click-Right"} ${x} ${y}`);
+}
+function mouseDblClick(x, y, hwnd) {
+	runPs(`. '${CLICK_SCRIPT_PATH}'; Click-DblLeft ${x} ${y} ${hwnd.readUInt32LE(0)}`);
 }
 var MAX_WIDTH = 72;
 var MAX_HEIGHT = 90;
@@ -86,7 +119,12 @@ var ipcSign = (win) => {
 		width: MAX_WIDTH,
 		height: MAX_HEIGHT
 	}));
-	ipcMain.on("mouse-click", (_, x, y, button) => mouseClick(x, y, button));
+	ipcMain.on("mouse-click", (_, x, y, button) => {
+		mouseClick(x, y, button);
+	});
+	ipcMain.on("mouse-dblclick", (_, x, y) => {
+		mouseDblClick(x, y, win.getNativeWindowHandle());
+	});
 	let moveTimer = null;
 	let isMoving = false;
 	win.on("move", () => {
