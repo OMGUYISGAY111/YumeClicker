@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('win', {
   setPos: (x: number, y: number) => ipcRenderer.send('window-set-pos', x, y),
   mouseClick: (x: number, y: number, button: 'left' | 'right' = 'left') => ipcRenderer.send('mouse-click', x, y, button),
   mouseDblClick: (x: number, y: number) => ipcRenderer.send('mouse-dblclick', x, y),
+  focus: () => ipcRenderer.send('window-focus'),
   onMoveStart: (cb: () => void) => ipcRenderer.on('window-move-start', cb),
   onMoveStop: (cb: () => void) => ipcRenderer.on('window-move-stop', cb),
 })

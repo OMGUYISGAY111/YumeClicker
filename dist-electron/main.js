@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { BrowserWindow, app, ipcMain } from "electron";
+import { BrowserWindow, app, globalShortcut, ipcMain } from "electron";
 //#region electron/main.ts
 var __dirname = dirname(fileURLToPath(import.meta.url));
 var CLICK_SCRIPT = `
@@ -124,7 +124,11 @@ var ipcSign = (win) => {
 	});
 	ipcMain.on("mouse-dblclick", (_, x, y) => {
 		mouseDblClick(x, y, win.getNativeWindowHandle());
+		setTimeout(() => win.focus(), 400);
+		setTimeout(() => win.focus(), 800);
 	});
+	ipcMain.on("window-focus", () => win.focus());
+	globalShortcut.register("X", () => win.focus());
 	let moveTimer = null;
 	let isMoving = false;
 	win.on("move", () => {

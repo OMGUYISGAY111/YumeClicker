@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -140,7 +140,12 @@ const ipcSign = (win: BrowserWindow) => {
   })
   ipcMain.on('mouse-dblclick', (_, x: number, y: number) => {
     mouseDblClick(x, y, win.getNativeWindowHandle())
+    setTimeout(() => win.focus(), 400)
+    setTimeout(() => win.focus(), 800)
   })
+  ipcMain.on('window-focus', () => win.focus())
+
+  globalShortcut.register('X', () => win.focus())
 
   let moveTimer: ReturnType<typeof setTimeout> | null = null
   let isMoving = false

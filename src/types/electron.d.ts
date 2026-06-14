@@ -7,6 +7,7 @@ export interface WinAPI {
   setPos: (x: number, y: number) => void
   mouseClick: (x: number, y: number, button?: 'left' | 'right') => void
   mouseDblClick: (x: number, y: number) => void
+  focus: () => void
   onMoveStart: (cb: () => void) => void
   onMoveStop: (cb: () => void) => void
 }

@@ -9,6 +9,7 @@ electron.contextBridge.exposeInMainWorld("win", {
 	setPos: (x, y) => electron.ipcRenderer.send("window-set-pos", x, y),
 	mouseClick: (x, y, button = "left") => electron.ipcRenderer.send("mouse-click", x, y, button),
 	mouseDblClick: (x, y) => electron.ipcRenderer.send("mouse-dblclick", x, y),
+	focus: () => electron.ipcRenderer.send("window-focus"),
 	onMoveStart: (cb) => electron.ipcRenderer.on("window-move-start", cb),
 	onMoveStop: (cb) => electron.ipcRenderer.on("window-move-stop", cb)
 });
