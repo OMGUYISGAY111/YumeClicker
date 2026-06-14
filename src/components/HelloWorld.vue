@@ -87,6 +87,7 @@ document.addEventListener('keydown', async (e) => {
     }
     const clickX = Math.max(0, Math.round(tx))
     const clickY = Math.max(0, Math.round(ty))
+    new Audio('/sounds/decide.WAV').play()
     window.win.mouseDblClick(clickX, clickY)
     return
   }
