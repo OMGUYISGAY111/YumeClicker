@@ -62,12 +62,16 @@ function startLoop() {
   setSprite('walk', dirMap[lastDir] ?? 'left')
 }
 
+//keyDown event
 document.addEventListener('keydown', async (e) => {
+
+  //close window
   if (e.key === "Escape") {
     window.win.close()
     return
   }
 
+  //move
   const dir = e.key.toLowerCase()
   if (!['w', 's', 'a', 'd'].includes(dir)) return
 

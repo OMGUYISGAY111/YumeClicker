@@ -5,6 +5,7 @@ export interface WinAPI {
   close: () => void
   getPos: () => Promise<number[]>
   setPos: (x: number, y: number) => void
+  mouseClick: (x: number, y: number, button?: 'left' | 'right') => void
   onMoveStart: (cb: () => void) => void
   onMoveStop: (cb: () => void) => void
 }
