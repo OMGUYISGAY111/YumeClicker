@@ -1,9 +1,9 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { spawn } from "node:child_process";
+import { execSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { BrowserWindow, app, globalShortcut, ipcMain, screen } from "electron";
+import { BrowserWindow, app, globalShortcut, ipcMain } from "electron";
 //#region electron/main.ts
 var __dirname = dirname(fileURLToPath(import.meta.url));
 var CLICK_SCRIPT = `
@@ -20,10 +20,20 @@ public static class MouseOps {
     [DllImport("user32.dll")]
     static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    static extern bool SetSystemCursor(IntPtr hcur, uint id);
+
+    [DllImport("user32.dll")]
+    static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
+
     const int MOUSEEVENTF_LEFTDOWN = 0x0002;
     const int MOUSEEVENTF_LEFTUP   = 0x0004;
     const int MOUSEEVENTF_RIGHTDOWN = 0x0008;
     const int MOUSEEVENTF_RIGHTUP  = 0x0010;
+
+    const uint OCR_NORMAL = 32512;
+    const uint SPI_SETCURSORS = 0x0057;
+    const uint SPIF_SENDCHANGE = 0x0002;
 
     static void DoClick(int dwDown, int dwUp, int x, int y) {
         SetCursorPos(x, y);
@@ -47,6 +57,14 @@ public static class MouseOps {
     public static void RightClick(int x, int y) {
         DoClick(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y);
     }
+
+    public static void ReplaceCursor(IntPtr hcur) {
+        SetSystemCursor(hcur, OCR_NORMAL);
+    }
+
+    public static void RestoreCursor() {
+        SystemParametersInfo(SPI_SETCURSORS, 0, IntPtr.Zero, SPIF_SENDCHANGE);
+    }
 }
 "@
 
@@ -59,6 +77,16 @@ function Click-DblLeft([int]$x, [int]$y, [IntPtr]$hwnd) {
 function Click-Right([int]$x, [int]$y) {
     [MouseOps]::RightClick($x, $y)
 }
+function Hide-Cursor {
+    Add-Type -AssemblyName System.Drawing
+    $bmp = New-Object System.Drawing.Bitmap(32, 32)
+    $hcur = $bmp.GetHicon()
+    [MouseOps]::ReplaceCursor($hcur)
+    $bmp.Dispose()
+}
+function Show-Cursor {
+    [MouseOps]::RestoreCursor()
+}
 `;
 var CLICK_SCRIPT_DIR = join(tmpdir(), "yumeClicker");
 var CLICK_SCRIPT_PATH = join(CLICK_SCRIPT_DIR, "click.ps1");
@@ -67,67 +95,30 @@ function ensureClickScript() {
 	mkdirSync(CLICK_SCRIPT_DIR, { recursive: true });
 	writeFileSync(CLICK_SCRIPT_PATH, CLICK_SCRIPT, "utf-8");
 }
-var MAX_WIDTH = 72;
-var MAX_HEIGHT = 90;
-var overlay = null;
-var overlayReady = false;
-function createOverlay() {
-	const overlayHtml = "<html style=\"cursor:none\"><body style=\"margin:0;background:transparent\"></body></html>";
-	const overlayPath = join(CLICK_SCRIPT_DIR, "overlay.html");
-	writeFileSync(overlayPath, overlayHtml, "utf-8");
-	const { width, height } = screen.getPrimaryDisplay().size;
-	overlay = new BrowserWindow({
-		x: 0,
-		y: 0,
-		width,
-		height,
-		show: false,
-		resizable: false,
-		frame: false,
-		transparent: true,
-		alwaysOnTop: true,
-		skipTaskbar: true,
-		focusable: false,
-		hasShadow: false,
-		webPreferences: {
-			nodeIntegration: false,
-			contextIsolation: true
-		}
-	});
-	overlay.setIgnoreMouseEvents(true, { forward: true });
-	overlay.loadFile(overlayPath);
-	overlay.webContents.on("did-finish-load", () => {
-		overlayReady = true;
-	});
+function runPs(cmd) {
+	try {
+		execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, {
+			timeout: 5e3,
+			windowsHide: true
+		});
+	} catch (err) {
+		console.error("powershell failed:", err.message);
+	}
 }
-function spawnPs(psCmd, onClose) {
-	const proc = spawn("powershell", [
-		"-NoProfile",
-		"-ExecutionPolicy",
-		"Bypass",
-		"-Command",
-		psCmd
-	], { windowsHide: true });
-	proc.on("error", (err) => {
-		console.error("spawn failed:", err.message);
-		onClose();
-	});
-	proc.on("close", onClose);
+function startCursorHide() {
+	runPs(`. '${CLICK_SCRIPT_PATH}'; Hide-Cursor`);
+}
+function stopCursorHide() {
+	runPs(`. '${CLICK_SCRIPT_PATH}'; Show-Cursor`);
 }
 function mouseClick(x, y, button = "left") {
-	const func = button === "left" ? "Click-Left" : "Click-Right";
-	if (overlay && !overlay.isDestroyed() && overlayReady) overlay.show();
-	spawnPs(`. '${CLICK_SCRIPT_PATH}'; ${func} ${x} ${y}`, () => {
-		if (overlay && !overlay.isDestroyed()) overlay.hide();
-	});
+	runPs(`. '${CLICK_SCRIPT_PATH}'; ${button === "left" ? "Click-Left" : "Click-Right"} ${x} ${y}`);
 }
 function mouseDblClick(x, y, hwnd) {
-	const hwndNum = hwnd.readUInt32LE(0);
-	if (overlay && !overlay.isDestroyed() && overlayReady) overlay.show();
-	spawnPs(`. '${CLICK_SCRIPT_PATH}'; Click-DblLeft ${x} ${y} ${hwndNum}`, () => {
-		if (overlay && !overlay.isDestroyed()) overlay.hide();
-	});
+	runPs(`. '${CLICK_SCRIPT_PATH}'; Click-DblLeft ${x} ${y} ${hwnd.readUInt32LE(0)}`);
 }
+var MAX_WIDTH = 72;
+var MAX_HEIGHT = 90;
 var createWindow = () => {
 	const win = new BrowserWindow({
 		width: MAX_WIDTH,
@@ -149,9 +140,6 @@ var createWindow = () => {
 	if (process.env.NODE_ENV === "development") win.loadURL("http://localhost:5173");
 	else win.loadFile("dist/index.html");
 	ipcSign(win);
-	win.once("closed", () => {
-		if (overlay && !overlay.isDestroyed()) overlay.destroy();
-	});
 };
 var ipcSign = (win) => {
 	ipcMain.on("set-window-size", (_, w, h) => win.setSize(w, h));
@@ -192,10 +180,11 @@ var ipcSign = (win) => {
 };
 app.whenReady().then(() => {
 	ensureClickScript();
-	createOverlay();
+	startCursorHide();
 	createWindow();
 });
 app.on("window-all-closed", () => {
+	stopCursorHide();
 	if (process.platform !== "darwin") app.quit();
 });
 //#endregion
