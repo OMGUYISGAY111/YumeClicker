@@ -25,14 +25,19 @@ public static class MouseOps {
     static extern bool SetSystemCursor(IntPtr hcur, uint id);
 
     [DllImport("user32.dll")]
+    static extern IntPtr CopyIcon(IntPtr hIcon);
+
+    [DllImport("user32.dll")]
     static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
+
+    [DllImport("user32.dll")]
+    static extern bool DestroyIcon(IntPtr hIcon);
 
     const int MOUSEEVENTF_LEFTDOWN = 0x0002;
     const int MOUSEEVENTF_LEFTUP   = 0x0004;
     const int MOUSEEVENTF_RIGHTDOWN = 0x0008;
     const int MOUSEEVENTF_RIGHTUP  = 0x0010;
 
-    const uint OCR_NORMAL = 32512;
     const uint SPI_SETCURSORS = 0x0057;
     const uint SPIF_SENDCHANGE = 0x0002;
 
@@ -59,12 +64,19 @@ public static class MouseOps {
         DoClick(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y);
     }
 
-    public static void ReplaceCursor(IntPtr hcur) {
-        SetSystemCursor(hcur, OCR_NORMAL);
+    public static void ReplaceAllCursors(IntPtr hcur) {
+        uint[] ids = { 32512, 32513, 32514, 32515, 32516, 32640, 32642, 32643, 32644, 32645, 32646, 32648, 32649, 32650 };
+        foreach (uint id in ids) {
+            SetSystemCursor(CopyIcon(hcur), id);
+        }
     }
 
     public static void RestoreCursor() {
         SystemParametersInfo(SPI_SETCURSORS, 0, IntPtr.Zero, SPIF_SENDCHANGE);
+    }
+
+    public static void DestroyCursorHandle(IntPtr hcur) {
+        DestroyIcon(hcur);
     }
 }
 "@
@@ -82,7 +94,8 @@ function Hide-Cursor {
     Add-Type -AssemblyName System.Drawing
     $bmp = New-Object System.Drawing.Bitmap(32, 32)
     $hcur = $bmp.GetHicon()
-    [MouseOps]::ReplaceCursor($hcur)
+    [MouseOps]::ReplaceAllCursors($hcur)
+    [MouseOps]::DestroyCursorHandle($hcur)
     $bmp.Dispose()
 }
 function Show-Cursor {
