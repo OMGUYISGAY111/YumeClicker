@@ -1,9 +1,9 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
-import { BrowserWindow, app, globalShortcut, ipcMain } from "electron";
+import { BrowserWindow, app, globalShortcut, ipcMain, screen } from "electron";
 //#region electron/main.ts
 var __dirname = dirname(fileURLToPath(import.meta.url));
 var CLICK_SCRIPT = `
@@ -67,24 +67,67 @@ function ensureClickScript() {
 	mkdirSync(CLICK_SCRIPT_DIR, { recursive: true });
 	writeFileSync(CLICK_SCRIPT_PATH, CLICK_SCRIPT, "utf-8");
 }
-function runPs(cmd) {
-	try {
-		execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, {
-			timeout: 5e3,
-			windowsHide: true
-		});
-	} catch (err) {
-		console.error("powershell failed:", err.message);
-	}
-}
-function mouseClick(x, y, button = "left") {
-	runPs(`. '${CLICK_SCRIPT_PATH}'; ${button === "left" ? "Click-Left" : "Click-Right"} ${x} ${y}`);
-}
-function mouseDblClick(x, y, hwnd) {
-	runPs(`. '${CLICK_SCRIPT_PATH}'; Click-DblLeft ${x} ${y} ${hwnd.readUInt32LE(0)}`);
-}
 var MAX_WIDTH = 72;
 var MAX_HEIGHT = 90;
+var overlay = null;
+var overlayReady = false;
+function createOverlay() {
+	const overlayHtml = "<html style=\"cursor:none\"><body style=\"margin:0;background:transparent\"></body></html>";
+	const overlayPath = join(CLICK_SCRIPT_DIR, "overlay.html");
+	writeFileSync(overlayPath, overlayHtml, "utf-8");
+	const { width, height } = screen.getPrimaryDisplay().size;
+	overlay = new BrowserWindow({
+		x: 0,
+		y: 0,
+		width,
+		height,
+		show: false,
+		resizable: false,
+		frame: false,
+		transparent: true,
+		alwaysOnTop: true,
+		skipTaskbar: true,
+		focusable: false,
+		hasShadow: false,
+		webPreferences: {
+			nodeIntegration: false,
+			contextIsolation: true
+		}
+	});
+	overlay.setIgnoreMouseEvents(true, { forward: true });
+	overlay.loadFile(overlayPath);
+	overlay.webContents.on("did-finish-load", () => {
+		overlayReady = true;
+	});
+}
+function spawnPs(psCmd, onClose) {
+	const proc = spawn("powershell", [
+		"-NoProfile",
+		"-ExecutionPolicy",
+		"Bypass",
+		"-Command",
+		psCmd
+	], { windowsHide: true });
+	proc.on("error", (err) => {
+		console.error("spawn failed:", err.message);
+		onClose();
+	});
+	proc.on("close", onClose);
+}
+function mouseClick(x, y, button = "left") {
+	const func = button === "left" ? "Click-Left" : "Click-Right";
+	if (overlay && !overlay.isDestroyed() && overlayReady) overlay.show();
+	spawnPs(`. '${CLICK_SCRIPT_PATH}'; ${func} ${x} ${y}`, () => {
+		if (overlay && !overlay.isDestroyed()) overlay.hide();
+	});
+}
+function mouseDblClick(x, y, hwnd) {
+	const hwndNum = hwnd.readUInt32LE(0);
+	if (overlay && !overlay.isDestroyed() && overlayReady) overlay.show();
+	spawnPs(`. '${CLICK_SCRIPT_PATH}'; Click-DblLeft ${x} ${y} ${hwndNum}`, () => {
+		if (overlay && !overlay.isDestroyed()) overlay.hide();
+	});
+}
 var createWindow = () => {
 	const win = new BrowserWindow({
 		width: MAX_WIDTH,
@@ -106,6 +149,9 @@ var createWindow = () => {
 	if (process.env.NODE_ENV === "development") win.loadURL("http://localhost:5173");
 	else win.loadFile("dist/index.html");
 	ipcSign(win);
+	win.once("closed", () => {
+		if (overlay && !overlay.isDestroyed()) overlay.destroy();
+	});
 };
 var ipcSign = (win) => {
 	ipcMain.on("set-window-size", (_, w, h) => win.setSize(w, h));
@@ -146,6 +192,7 @@ var ipcSign = (win) => {
 };
 app.whenReady().then(() => {
 	ensureClickScript();
+	createOverlay();
 	createWindow();
 });
 app.on("window-all-closed", () => {
