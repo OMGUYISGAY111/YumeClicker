@@ -175,7 +175,10 @@ var ipcSign = (win) => {
 		setTimeout(() => win.focus(), 800);
 	});
 	ipcMain.on("window-focus", () => win.focus());
-	globalShortcut.register("X", () => win.focus());
+	globalShortcut.register("X", () => {
+		win.show();
+		win.focus();
+	});
 	let moveTimer = null;
 	let isMoving = false;
 	win.on("move", () => {

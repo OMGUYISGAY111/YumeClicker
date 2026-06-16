@@ -194,7 +194,10 @@ const ipcSign = (win: BrowserWindow) => {
   })
   ipcMain.on('window-focus', () => win.focus())
 
-  globalShortcut.register('X', () => win.focus())
+  globalShortcut.register('X', () => {
+    win.show()
+    win.focus()
+  })
 
   let moveTimer: ReturnType<typeof setTimeout> | null = null
   let isMoving = false
