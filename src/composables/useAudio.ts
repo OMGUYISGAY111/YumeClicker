@@ -2,7 +2,7 @@ let audio: HTMLAudioElement | null = null
 
 function getAudio(): HTMLAudioElement {
   if (!audio) {
-    audio = new Audio('/sounds/foot_001.wav')
+    audio = new Audio('./sounds/foot_001.wav')
     audio.loop = true
   }
   return audio
